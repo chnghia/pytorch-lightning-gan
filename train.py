@@ -17,7 +17,7 @@ def main(img_height: int = 256,
 
     # Configure dataloaders
     transforms_ = [
-#         transforms.Resize((img_height, img_width), Image.BICUBIC),
+        #         transforms.Resize((img_height, img_width), Image.BICUBIC),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]
@@ -42,7 +42,7 @@ def main(img_height: int = 256,
 
     trainer = Trainer(gpus=[0])
 
-    trainer.fit(model, dataloader, val_dataloader)
+    trainer.fit(model, dataloader)
 
 
 if __name__ == '__main__':

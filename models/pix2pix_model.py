@@ -75,11 +75,9 @@ class Pix2PixModel(LightningModule):
             Tensor(np.ones((real_A.size(0), *self.patch))), requires_grad=False)
         fake = Variable(
             Tensor(np.zeros((real_A.size(0), *self.patch))), requires_grad=False)
-        
+
         # generate images
         fake_B = self.generator(real_A)
-        
-        # aa
 
         # train generator
         if optimizer_idx == 0:
@@ -143,7 +141,7 @@ class Pix2PixModel(LightningModule):
 
     def on_epoch_end(self):
         pass
-        
+
     def validation_step(self, batch, batch_idx):
         pass
 
