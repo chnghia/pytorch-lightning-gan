@@ -15,6 +15,8 @@ from torchvision.datasets import MNIST
 from pytorch_lightning.core import LightningModule
 from pytorch_lightning.trainer import Trainer
 from models.pix2pix.models import GeneratorUNet, Discriminator
+from PIL import Image
+from models.pix2pix.datasets import ImageDataset
 
 cuda = True if torch.cuda.is_available() else False
 # Tensor type
@@ -30,7 +32,9 @@ class Pix2PixModel(LightningModule):
                  batch_size: int = 64,
                  img_height: int = 256,
                  img_width: int = 256,
-                 lambda_pixel: int = 100, ** kwargs):
+                 lambda_pixel: int = 100,
+                 n_cpu: int = 4,
+                 dataset_name="mini_pix2pix", ** kwargs):
         """Initialize the pix2pix class.
 
         Parameters:
@@ -43,6 +47,8 @@ class Pix2PixModel(LightningModule):
         self.batch_size = batch_size
         self.img_height = img_height
         self.img_width = img_width
+        self.dataset_name = dataset_name
+        self.n_cpu = n_cpu
 
         self.generator = GeneratorUNet()
         self.discriminator = Discriminator()
@@ -142,17 +148,18 @@ class Pix2PixModel(LightningModule):
     def train_dataloader(self):
         # Configure dataloaders
         transforms_ = [
-            transforms.Resize((img_height, img_width), Image.BICUBIC),
+            transforms.Resize(
+                (self.img_height, self.img_width), Image.BICUBIC),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
 
         dataloader = DataLoader(
             ImageDataset("./data/%s" %
-                         dataset_name, transforms_=transforms_),
-            batch_size=batch_size,
+                         self.dataset_name, transforms_=transforms_),
+            batch_size=self.batch_size,
             shuffle=True,
-            num_workers=n_cpu,
+            num_workers=self.n_cpu,
         )
 
         # val_dataloader = DataLoader(
@@ -163,6 +170,23 @@ class Pix2PixModel(LightningModule):
         #     num_workers=1,
         # )
         return dataloader
+
+    def val_dataloader(self):
+        transforms_ = [
+            transforms.Resize(
+                (self.img_height, self.img_width), Image.BICUBIC),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+
+        val_dataloader = DataLoader(
+            ImageDataset("./data/%s" % self.dataset_name,
+                         transforms_=transforms_, mode="val"),
+            batch_size=10,
+            shuffle=True,
+            num_workers=1,
+        )
+        return val_dataloader
 
     def on_epoch_end(self):
         pass
