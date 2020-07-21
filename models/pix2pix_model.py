@@ -1,8 +1,8 @@
 import os
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
-
 import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,7 +14,7 @@ from torchvision.datasets import MNIST
 
 from pytorch_lightning.core import LightningModule
 from pytorch_lightning.trainer import Trainer
-from pix2pix.models import GeneratorUNet, Discriminator
+from models.pix2pix.models import GeneratorUNet, Discriminator
 
 cuda = True if torch.cuda.is_available() else False
 # Tensor type
@@ -75,12 +75,12 @@ class Pix2PixModel(LightningModule):
             Tensor(np.ones((real_A.size(0), *self.patch))), requires_grad=False)
         fake = Variable(
             Tensor(np.zeros((real_A.size(0), *self.patch))), requires_grad=False)
+        
+        # generate images
+        fake_B = self.generator(real_A)
 
         # train generator
         if optimizer_idx == 0:
-            # generate images
-            fake_B = self.generator(real_A)
-
             # log sampled images
             img_sample = torch.cat((real_A.data, fake_B.data, real_B.data), -2)
             grid = torchvision.utils.make_grid(img_sample)
@@ -127,8 +127,6 @@ class Pix2PixModel(LightningModule):
             })
             return output
 
-        raise NotImplementedError
-
     def configure_optimizers(self):
         lr = self.lr
         b1 = self.b1
@@ -142,4 +140,10 @@ class Pix2PixModel(LightningModule):
         return [opt_g, opt_d], []
 
     def on_epoch_end(self):
-        print("on_epoch_end")
+        pass
+        
+    def validation_step(self, batch, batch_idx):
+        pass
+
+    def validation_epoch_end(self, outputs):
+        pass

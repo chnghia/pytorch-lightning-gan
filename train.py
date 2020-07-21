@@ -13,11 +13,11 @@ def main(img_height: int = 256,
          img_width: int = 256,
          dataset_name="mini_pix2pix",
          batch_size: int = 1,
-         n_cpu: int = 8) -> None:
+         n_cpu: int = 4) -> None:
 
     # Configure dataloaders
     transforms_ = [
-        transforms.Resize((img_height, img_width), Image.BICUBIC),
+#         transforms.Resize((img_height, img_width), Image.BICUBIC),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]
@@ -47,3 +47,5 @@ def main(img_height: int = 256,
 
 if __name__ == '__main__':
     parser = ArgumentParser()
+    hparams = parser.parse_args()
+    main(hparams)
