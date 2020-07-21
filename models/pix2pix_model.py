@@ -139,6 +139,31 @@ class Pix2PixModel(LightningModule):
             self.discriminator.parameters(), lr=lr, betas=(b1, b2))
         return [opt_g, opt_d], []
 
+    def train_dataloader(self):
+        # Configure dataloaders
+        transforms_ = [
+            transforms.Resize((img_height, img_width), Image.BICUBIC),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+
+        dataloader = DataLoader(
+            ImageDataset("./data/%s" %
+                         dataset_name, transforms_=transforms_),
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=n_cpu,
+        )
+
+        # val_dataloader = DataLoader(
+        #     ImageDataset("./data/%s" % dataset_name,
+        #                 transforms_=transforms_, mode="val"),
+        #     batch_size=10,
+        #     shuffle=True,
+        #     num_workers=1,
+        # )
+        return dataloader
+
     def on_epoch_end(self):
         pass
 

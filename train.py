@@ -16,33 +16,33 @@ def main(img_height: int = 256,
          n_cpu: int = 4) -> None:
 
     # Configure dataloaders
-    transforms_ = [
-        #         transforms.Resize((img_height, img_width), Image.BICUBIC),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ]
+    # transforms_ = [
+    #     #         transforms.Resize((img_height, img_width), Image.BICUBIC),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    # ]
 
-    dataloader = DataLoader(
-        ImageDataset("./data/%s" %
-                     dataset_name, transforms_=transforms_),
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=n_cpu,
-    )
+    # dataloader = DataLoader(
+    #     ImageDataset("./data/%s" %
+    #                  dataset_name, transforms_=transforms_),
+    #     batch_size=batch_size,
+    #     shuffle=True,
+    #     num_workers=n_cpu,
+    # )
 
-    val_dataloader = DataLoader(
-        ImageDataset("./data/%s" % dataset_name,
-                     transforms_=transforms_, mode="val"),
-        batch_size=10,
-        shuffle=True,
-        num_workers=1,
-    )
+    # val_dataloader = DataLoader(
+    #     ImageDataset("./data/%s" % dataset_name,
+    #                  transforms_=transforms_, mode="val"),
+    #     batch_size=10,
+    #     shuffle=True,
+    #     num_workers=1,
+    # )
 
     model = Pix2PixModel()
 
     trainer = Trainer(gpus=[0])
 
-    trainer.fit(model, dataloader)
+    trainer.fit(model)
 
 
 if __name__ == '__main__':
