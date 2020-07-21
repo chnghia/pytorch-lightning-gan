@@ -78,6 +78,8 @@ class Pix2PixModel(LightningModule):
         
         # generate images
         fake_B = self.generator(real_A)
+        
+        # aa
 
         # train generator
         if optimizer_idx == 0:
