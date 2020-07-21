@@ -1,7 +1,7 @@
 import os
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
-from models.pix2pix import Pix2PixModel
+from models.pix2pix_model import Pix2PixModel
 from pytorch_lightning.trainer import Trainer
 from torchvision import transforms
 from torch.utils.data import DataLoader
@@ -11,7 +11,7 @@ from models.pix2pix.datasets import ImageDataset
 
 def main(img_height: int = 256,
          img_width: int = 256,
-         dataset_name="",
+         dataset_name="mini_pix2pix",
          batch_size: int = 1,
          n_cpu: int = 8) -> None:
 
