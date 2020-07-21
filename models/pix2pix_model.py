@@ -29,7 +29,7 @@ class Pix2PixModel(LightningModule):
                  lr: float = 0.0002,
                  b1: float = 0.5,
                  b2: float = 0.999,
-                 batch_size: int = 64,
+                 batch_size: int = 1,
                  img_height: int = 256,
                  img_width: int = 256,
                  lambda_pixel: int = 100,
@@ -161,14 +161,6 @@ class Pix2PixModel(LightningModule):
             shuffle=True,
             num_workers=self.n_cpu,
         )
-
-        # val_dataloader = DataLoader(
-        #     ImageDataset("./data/%s" % dataset_name,
-        #                 transforms_=transforms_, mode="val"),
-        #     batch_size=10,
-        #     shuffle=True,
-        #     num_workers=1,
-        # )
         return dataloader
 
     def val_dataloader(self):
