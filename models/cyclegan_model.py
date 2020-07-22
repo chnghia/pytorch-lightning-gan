@@ -2,3 +2,200 @@ import os
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
 import numpy as np
+
+from pytorch_lightning.core import LightningModule
+from models.cyclegan.models import GeneratorResNet, Discriminator
+from models.cyclegan.utils import ReplayBuffer
+
+
+class CycleGanModel(LightningModule):
+    def __init__(self,
+                 latent_dim: int = 100,
+                 lr: float = 0.0002,
+                 b1: float = 0.5,
+                 b2: float = 0.999,
+                 batch_size: int = 1,
+                 img_height: int = 256,
+                 img_width: int = 256,
+                 channels: int = 3,
+                 lambda_pixel: int = 100,
+                 n_cpu: int = 4,
+                 n_residual_blocks: int = 9,
+                 dataset_name="mini_pix2pix", **kwargs):
+        super().__init__()
+        self.lr = lr
+        self.b1 = b1
+        self.b2 = b2
+        self.batch_size = batch_size
+        self.img_height = img_height
+        self.img_width = img_width
+        self.channels = channels
+        self.dataset_name = dataset_name
+        self.n_cpu = n_cpu
+        input_shape = (channels, img_height, img_width)
+        self.input_shape = input_shape
+
+        # Image transformations
+        self.transforms_ = [
+            transforms.Resize(int(self.img_height * 1.12), Image.BICUBIC),
+            transforms.RandomCrop((self.img_height, self.img_width)),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+
+        # Losses
+        self.criterion_GAN = torch.nn.MSELoss()
+        self.criterion_cycle = torch.nn.L1Loss()
+        self.criterion_identity = torch.nn.L1Loss()
+
+        self.G_AB = GeneratorResNet(input_shape, self.n_residual_blocks)
+        self.G_BA = GeneratorResNet(input_shape, self.n_residual_blocks)
+        self.D_A = Discriminator(input_shape)
+        self.D_B = Discriminator(input_shape)
+
+        self.fake_A_buffer = ReplayBuffer()
+        self.fake_B_buffer = ReplayBuffer()
+
+   def forward(self, z):
+        return self.generator(z)
+
+    def adversarial_loss(self, y_hat, y):
+        raise NotImplementedError
+
+    def training_step(self, batch, batch_idx, optimizer_idx):
+        # Set model input
+        real_A = Variable(batch["A"].type(Tensor))
+        real_B = Variable(batch["B"].type(Tensor))
+
+        # Adversarial ground truths
+        valid = Variable(Tensor(np.ones((real_A.size(0), *D_A.output_shape))), requires_grad=False)
+        fake = Variable(Tensor(np.zeros((real_A.size(0), *D_A.output_shape))), requires_grad=False)
+
+        fake_B = self.G_AB(real_A)
+        fake_A = self.G_BA(real_B)
+
+        # ------------------
+        #  Train Generators
+        # ------------------
+        if optimizer_idx == 0:
+            self.G_AB.train()
+            self.G_BA.train()
+
+            # Identity loss
+            loss_id_A = self.criterion_identity(self.G_BA(real_A), real_A)
+            loss_id_B = self.criterion_identity(self.G_AB(real_B), real_B)
+
+            loss_identity = (loss_id_A + loss_id_B) / 2
+
+            # GAN loss
+            loss_GAN_AB = self.criterion_GAN(self.D_B(fake_B), valid)
+            loss_GAN_BA = self.criterion_GAN(self.D_A(fake_A), valid)
+            loss_GAN = (loss_GAN_AB + loss_GAN_BA) / 2
+
+            # Cycle loss
+            recov_A = self.G_BA(fake_B)
+            loss_cycle_A = self.criterion_cycle(recov_A, real_A)
+            recov_B = self.G_AB(fake_A)
+            loss_cycle_B = self.criterion_cycle(recov_B, real_B)
+
+            loss_cycle = (loss_cycle_A + loss_cycle_B) / 2
+
+            # Total loss
+            loss_G = loss_GAN + opt.lambda_cyc * loss_cycle + opt.lambda_id * loss_identity
+            tqdm_dict = {'loss_G': loss_G}
+
+            output = OrderedDict({
+                'loss': loss_G,
+                'progress_bar': tqdm_dict,
+                'log': tqdm_dict
+            })
+            return output
+        
+        # -----------------------
+        #  Train Discriminator A
+        # -----------------------
+        if optimizer_idx == 1:
+            # Real loss
+            loss_real = self.criterion_GAN(self.D_A(real_A), valid)
+            # Fake loss (on batch of previously generated samples)
+            fake_A_ = fake_A_buffer.push_and_pop(fake_A)
+            loss_fake = self.criterion_GAN(self.D_A(fake_A_.detach()), fake)
+            # Total loss
+            loss_D_A = (loss_real + loss_fake) / 2
+
+            tqdm_dict = {'loss_D_A': loss_D_A}
+            
+            output = OrderedDict({
+                'loss': loss_D_A,
+                'progress_bar': tqdm_dict,
+                'log': tqdm_dict
+            })
+            return output
+
+        # -----------------------
+        #  Train Discriminator B
+        # -----------------------
+        if optimizer_idx == 2:
+            # Real loss
+            loss_real = criterion_GAN(D_B(real_B), valid)
+            # Fake loss (on batch of previously generated samples)
+            fake_B_ = fake_B_buffer.push_and_pop(fake_B)
+            loss_fake = criterion_GAN(D_B(fake_B_.detach()), fake)
+            # Total loss
+            loss_D_B = (loss_real + loss_fake) / 2
+
+            loss_D_B.backward()
+            # optimizer_D_B.step()
+
+            loss_D = (loss_D_A + loss_D_B) / 2
+
+            tqdm_dict = {'loss_D': loss_D}
+            
+            output = OrderedDict({
+                'loss': loss_D,
+                'progress_bar': tqdm_dict,
+                'log': tqdm_dict
+            })
+            return output
+
+    def configure_optimizers(self):
+        lr = self.lr
+        b1 = self.b1
+        b2 = self.b2
+
+        # Optimizers
+        optimizer_G = torch.optim.Adam(
+            itertools.chain(self.G_AB.parameters(), self.G_BA.parameters()), lr=lr, betas=(b1, b2)
+        )
+        optimizer_D_A = torch.optim.Adam(self.D_A.parameters(), lr=lr, betas=(b1, b2))
+        optimizer_D_B = torch.optim.Adam(self.D_B.parameters(), lr=lr, betas=(b1, b2))
+        return [optimizer_G, optimizer_D_A, optimizer_D_B], []
+
+    def train_dataloader(self):
+        # Training data loader
+        dataloader = DataLoader(
+            ImageDataset("./data/%s" % self.dataset_name, transforms_=self.transforms_, unaligned=True),
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.n_cpu,
+        )
+        return dataloader
+
+    def val_dataloader(self):
+        val_dataloader = DataLoader(
+            ImageDataset("./data/%s" % self.dataset_name, transforms_=self.transforms_, unaligned=True, mode="test"),
+            batch_size=5,
+            shuffle=True,
+            num_workers=1,
+        )
+        return val_dataloader
+
+    def on_epoch_end(self):
+        pass
+
+    def validation_step(self, batch, batch_idx):
+        pass
+
+    def validation_epoch_end(self, outputs):
+        pass

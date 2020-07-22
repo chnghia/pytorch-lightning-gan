@@ -1,24 +1,18 @@
 import os
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
-from models.pix2pix_model import Pix2PixModel
 from pytorch_lightning.trainer import Trainer
-from torchvision import transforms
-from torch.utils.data import DataLoader
-from PIL import Image
-from models.pix2pix.datasets import ImageDataset
+from models.cyclegan_model import CycleGanModel
 
 
 def main(img_height: int = 256,
          img_width: int = 256,
-         dataset_name="mini_pix2pix",
+         dataset_name="mini",
          batch_size: int = 1,
          n_cpu: int = 4) -> None:
 
-    model = Pix2PixModel()
-
+    model = CycleGanModel()
     trainer = Trainer(gpus=[0])
-
     trainer.fit(model)
 
 
