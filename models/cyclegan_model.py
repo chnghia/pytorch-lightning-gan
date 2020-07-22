@@ -107,16 +107,16 @@ class CycleGanModel(LightningModule):
         if optimizer_idx == 0:
 
             # Arange images along x-axis
-            real_A = torchvision.utils.make_grid(
+            real_A_ = torchvision.utils.make_grid(
                 real_A, nrow=5, normalize=True)
-            real_B = torchvision.utils.make_grid(
+            real_B_ = torchvision.utils.make_grid(
                 real_B, nrow=5, normalize=True)
-            fake_A = torchvision.utils.make_grid(
+            fake_A_ = torchvision.utils.make_grid(
                 fake_A, nrow=5, normalize=True)
-            fake_B = torchvision.utils.make_grid(
+            fake_B_ = torchvision.utils.make_grid(
                 fake_B, nrow=5, normalize=True)
             # Arange images along y-axis
-            image_grid = torch.cat((real_A, fake_B, real_B, fake_A), 1)
+            image_grid = torch.cat((real_A_, fake_B_, real_B_, fake_A_), 1)
             grid = torchvision.utils.make_grid(image_grid)
             self.logger.experiment.add_image('generated_images', grid, 0)
 
