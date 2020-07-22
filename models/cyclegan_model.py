@@ -57,8 +57,8 @@ class CycleGanModel(LightningModule):
         self.fake_A_buffer = ReplayBuffer()
         self.fake_B_buffer = ReplayBuffer()
 
-   def forward(self, z):
-        return self.generator(z)
+    def forward(self, z):
+        return self.G_AB(z)
 
     def adversarial_loss(self, y_hat, y):
         raise NotImplementedError
@@ -69,8 +69,10 @@ class CycleGanModel(LightningModule):
         real_B = Variable(batch["B"].type(Tensor))
 
         # Adversarial ground truths
-        valid = Variable(Tensor(np.ones((real_A.size(0), *D_A.output_shape))), requires_grad=False)
-        fake = Variable(Tensor(np.zeros((real_A.size(0), *D_A.output_shape))), requires_grad=False)
+        valid = Variable(
+            Tensor(np.ones((real_A.size(0), *D_A.output_shape))), requires_grad=False)
+        fake = Variable(
+            Tensor(np.zeros((real_A.size(0), *D_A.output_shape))), requires_grad=False)
 
         fake_B = self.G_AB(real_A)
         fake_A = self.G_BA(real_B)
@@ -111,7 +113,7 @@ class CycleGanModel(LightningModule):
                 'log': tqdm_dict
             })
             return output
-        
+
         # -----------------------
         #  Train Discriminator A
         # -----------------------
@@ -125,7 +127,7 @@ class CycleGanModel(LightningModule):
             loss_D_A = (loss_real + loss_fake) / 2
 
             tqdm_dict = {'loss_D_A': loss_D_A}
-            
+
             output = OrderedDict({
                 'loss': loss_D_A,
                 'progress_bar': tqdm_dict,
@@ -151,7 +153,7 @@ class CycleGanModel(LightningModule):
             loss_D = (loss_D_A + loss_D_B) / 2
 
             tqdm_dict = {'loss_D': loss_D}
-            
+
             output = OrderedDict({
                 'loss': loss_D,
                 'progress_bar': tqdm_dict,
@@ -168,14 +170,17 @@ class CycleGanModel(LightningModule):
         optimizer_G = torch.optim.Adam(
             itertools.chain(self.G_AB.parameters(), self.G_BA.parameters()), lr=lr, betas=(b1, b2)
         )
-        optimizer_D_A = torch.optim.Adam(self.D_A.parameters(), lr=lr, betas=(b1, b2))
-        optimizer_D_B = torch.optim.Adam(self.D_B.parameters(), lr=lr, betas=(b1, b2))
+        optimizer_D_A = torch.optim.Adam(
+            self.D_A.parameters(), lr=lr, betas=(b1, b2))
+        optimizer_D_B = torch.optim.Adam(
+            self.D_B.parameters(), lr=lr, betas=(b1, b2))
         return [optimizer_G, optimizer_D_A, optimizer_D_B], []
 
     def train_dataloader(self):
         # Training data loader
         dataloader = DataLoader(
-            ImageDataset("./data/%s" % self.dataset_name, transforms_=self.transforms_, unaligned=True),
+            ImageDataset("./data/%s" % self.dataset_name,
+                         transforms_=self.transforms_, unaligned=True),
             batch_size=self.batch_size,
             shuffle=True,
             num_workers=self.n_cpu,
@@ -184,7 +189,8 @@ class CycleGanModel(LightningModule):
 
     def val_dataloader(self):
         val_dataloader = DataLoader(
-            ImageDataset("./data/%s" % self.dataset_name, transforms_=self.transforms_, unaligned=True, mode="test"),
+            ImageDataset("./data/%s" % self.dataset_name,
+                         transforms_=self.transforms_, unaligned=True, mode="test"),
             batch_size=5,
             shuffle=True,
             num_workers=1,
