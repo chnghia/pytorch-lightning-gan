@@ -26,6 +26,7 @@ cuda = True if torch.cuda.is_available() else False
 # Tensor type
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
+
 class CycleGanModel(LightningModule):
     def __init__(self,
                  latent_dim: int = 100,
@@ -104,6 +105,21 @@ class CycleGanModel(LightningModule):
         #  Train Generators
         # ------------------
         if optimizer_idx == 0:
+
+            # Arange images along x-axis
+            real_A = torchvision.utils.make_grid(
+                real_A, nrow=5, normalize=True)
+            real_B = torchvision.utils.make_grid(
+                real_B, nrow=5, normalize=True)
+            fake_A = torchvision.utils.make_grid(
+                fake_A, nrow=5, normalize=True)
+            fake_B = torchvision.utils.make_grid(
+                fake_B, nrow=5, normalize=True)
+            # Arange images along y-axis
+            image_grid = torch.cat((real_A, fake_B, real_B, fake_A), 1)
+            grid = torchvision.utils.make_grid(image_grid)
+            self.logger.experiment.add_image('generated_images', grid, 0)
+
             self.G_AB.train()
             self.G_BA.train()
 
