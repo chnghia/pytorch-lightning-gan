@@ -2,11 +2,29 @@ import os
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
 import numpy as np
+from PIL import Image
+import itertools
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision
+import torchvision.transforms as transforms
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
+from torchvision.datasets import MNIST
 
 from pytorch_lightning.core import LightningModule
+from pytorch_lightning.trainer import Trainer
+
 from models.cyclegan.models import GeneratorResNet, Discriminator
 from models.cyclegan.utils import ReplayBuffer
+from models.cyclegan.datasets import ImageDataset
 
+
+cuda = True if torch.cuda.is_available() else False
+# Tensor type
+Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 class CycleGanModel(LightningModule):
     def __init__(self,
@@ -21,7 +39,9 @@ class CycleGanModel(LightningModule):
                  lambda_pixel: int = 100,
                  n_cpu: int = 4,
                  n_residual_blocks: int = 9,
-                 dataset_name="mini_pix2pix", **kwargs):
+                 lambda_cyc: float = 10.0,
+                 lambda_id: float = 5.0,
+                 dataset_name="mini", **kwargs):
         super().__init__()
         self.lr = lr
         self.b1 = b1
@@ -34,6 +54,9 @@ class CycleGanModel(LightningModule):
         self.n_cpu = n_cpu
         input_shape = (channels, img_height, img_width)
         self.input_shape = input_shape
+        self.n_residual_blocks = n_residual_blocks
+        self.lambda_cyc = lambda_cyc
+        self.lambda_id = lambda_id
 
         # Image transformations
         self.transforms_ = [
@@ -70,9 +93,9 @@ class CycleGanModel(LightningModule):
 
         # Adversarial ground truths
         valid = Variable(
-            Tensor(np.ones((real_A.size(0), *D_A.output_shape))), requires_grad=False)
+            Tensor(np.ones((real_A.size(0), *self.D_A.output_shape))), requires_grad=False)
         fake = Variable(
-            Tensor(np.zeros((real_A.size(0), *D_A.output_shape))), requires_grad=False)
+            Tensor(np.zeros((real_A.size(0), *self.D_A.output_shape))), requires_grad=False)
 
         fake_B = self.G_AB(real_A)
         fake_A = self.G_BA(real_B)
@@ -104,7 +127,7 @@ class CycleGanModel(LightningModule):
             loss_cycle = (loss_cycle_A + loss_cycle_B) / 2
 
             # Total loss
-            loss_G = loss_GAN + opt.lambda_cyc * loss_cycle + opt.lambda_id * loss_identity
+            loss_G = loss_GAN + self.lambda_cyc * loss_cycle + self.lambda_id * loss_identity
             tqdm_dict = {'loss_G': loss_G}
 
             output = OrderedDict({
@@ -121,7 +144,7 @@ class CycleGanModel(LightningModule):
             # Real loss
             loss_real = self.criterion_GAN(self.D_A(real_A), valid)
             # Fake loss (on batch of previously generated samples)
-            fake_A_ = fake_A_buffer.push_and_pop(fake_A)
+            fake_A_ = self.fake_A_buffer.push_and_pop(fake_A)
             loss_fake = self.criterion_GAN(self.D_A(fake_A_.detach()), fake)
             # Total loss
             loss_D_A = (loss_real + loss_fake) / 2
@@ -140,17 +163,18 @@ class CycleGanModel(LightningModule):
         # -----------------------
         if optimizer_idx == 2:
             # Real loss
-            loss_real = criterion_GAN(D_B(real_B), valid)
+            loss_real = self.criterion_GAN(self.D_B(real_B), valid)
             # Fake loss (on batch of previously generated samples)
-            fake_B_ = fake_B_buffer.push_and_pop(fake_B)
-            loss_fake = criterion_GAN(D_B(fake_B_.detach()), fake)
+            fake_B_ = self.fake_B_buffer.push_and_pop(fake_B)
+            loss_fake = self.criterion_GAN(self.D_B(fake_B_.detach()), fake)
             # Total loss
             loss_D_B = (loss_real + loss_fake) / 2
 
-            loss_D_B.backward()
+#             loss_D_B.backward()
             # optimizer_D_B.step()
 
-            loss_D = (loss_D_A + loss_D_B) / 2
+            # loss_D = (loss_D_A + loss_D_B) / 2
+            loss_D = (loss_D_B) / 2
 
             tqdm_dict = {'loss_D': loss_D}
 
@@ -187,21 +211,21 @@ class CycleGanModel(LightningModule):
         )
         return dataloader
 
-    def val_dataloader(self):
-        val_dataloader = DataLoader(
-            ImageDataset("./data/%s" % self.dataset_name,
-                         transforms_=self.transforms_, unaligned=True, mode="test"),
-            batch_size=5,
-            shuffle=True,
-            num_workers=1,
-        )
-        return val_dataloader
+#     def val_dataloader(self):
+#         val_dataloader = DataLoader(
+#             ImageDataset("./data/%s" % self.dataset_name,
+#                          transforms_=self.transforms_, unaligned=True, mode="test"),
+#             batch_size=1,
+#             shuffle=True,
+#             num_workers=1,
+#         )
+#         return val_dataloader
 
     def on_epoch_end(self):
         pass
 
-    def validation_step(self, batch, batch_idx):
-        pass
+#     def validation_step(self, batch, batch_idx):
+#         pass
 
-    def validation_epoch_end(self, outputs):
-        pass
+#     def validation_epoch_end(self, outputs):
+#         pass
