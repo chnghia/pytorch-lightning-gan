@@ -33,16 +33,16 @@ class CycleGanModel(LightningModule):
                  lr: float = 0.0002,
                  b1: float = 0.5,
                  b2: float = 0.999,
-                 batch_size: int = 1,
-                 img_height: int = 256,
-                 img_width: int = 256,
+                 batch_size: int = 4,
+                 img_height: int = 128,
+                 img_width: int = 128,
                  channels: int = 3,
                  lambda_pixel: int = 100,
                  n_cpu: int = 4,
-                 n_residual_blocks: int = 9,
+                 n_residual_blocks: int = 7,
                  lambda_cyc: float = 10.0,
                  lambda_id: float = 5.0,
-                 dataset_name="mini", **kwargs):
+                 dataset_name="horse2zebra", **kwargs):
         super().__init__()
         self.lr = lr
         self.b1 = b1
