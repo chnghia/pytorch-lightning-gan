@@ -18,7 +18,7 @@ from pytorch_lightning.core import LightningModule
 from pytorch_lightning.trainer import Trainer
 
 from models.cyclegan.models import GeneratorResNet, Discriminator
-from models.cyclegan.utils import ReplayBuffer
+from models.cyclegan.utils import ReplayBuffer, LambdaLR
 from models.cyclegan.datasets import ImageDataset
 
 
@@ -153,53 +153,59 @@ class CycleGanModel(LightningModule):
             })
             return output
 
-        # -----------------------
-        #  Train Discriminator A
-        # -----------------------
-        if optimizer_idx == 1:
+        if optimizer_idx > 0:
             # Real loss
-            loss_real = self.criterion_GAN(self.D_A(real_A), valid)
+            loss_real_A = self.criterion_GAN(self.D_A(real_A), valid)
             # Fake loss (on batch of previously generated samples)
             fake_A_ = self.fake_A_buffer.push_and_pop(fake_A)
-            loss_fake = self.criterion_GAN(self.D_A(fake_A_.detach()), fake)
-            # Total loss
-            loss_D_A = (loss_real + loss_fake) / 2
+            loss_fake_A = self.criterion_GAN(
+                self.D_A(fake_A_.detach()), fake)
+            loss_D_A = (loss_real_A + loss_fake_A) / 2
 
-            tqdm_dict = {'loss_D_A': loss_D_A}
+            # -----------------------
+            #  Train Discriminator A
+            # -----------------------
+            if optimizer_idx == 1:
+                # Real loss
+                # loss_real = self.criterion_GAN(self.D_A(real_A), valid)
+                # Fake loss (on batch of previously generated samples)
+                # fake_A_ = self.fake_A_buffer.push_and_pop(fake_A)
+                # loss_fake = self.criterion_GAN(self.D_A(fake_A_.detach()), fake)
+                # Total loss
+                # loss_D_A = (loss_real + loss_fake) / 2
 
-            output = OrderedDict({
-                'loss': loss_D_A,
-                'progress_bar': tqdm_dict,
-                'log': tqdm_dict
-            })
-            return output
+                tqdm_dict = {'loss_D_A': loss_D_A}
 
-        # -----------------------
-        #  Train Discriminator B
-        # -----------------------
-        if optimizer_idx == 2:
-            # Real loss
-            loss_real = self.criterion_GAN(self.D_B(real_B), valid)
-            # Fake loss (on batch of previously generated samples)
-            fake_B_ = self.fake_B_buffer.push_and_pop(fake_B)
-            loss_fake = self.criterion_GAN(self.D_B(fake_B_.detach()), fake)
-            # Total loss
-            loss_D_B = (loss_real + loss_fake) / 2
+                output = OrderedDict({
+                    'loss': loss_D_A,
+                    'progress_bar': tqdm_dict,
+                    'log': tqdm_dict
+                })
+                return output
 
-#             loss_D_B.backward()
-            # optimizer_D_B.step()
+            # -----------------------
+            #  Train Discriminator B
+            # -----------------------
+            if optimizer_idx == 2:
+                # Real loss
+                loss_real_B = self.criterion_GAN(self.D_B(real_B), valid)
+                # Fake loss (on batch of previously generated samples)
+                fake_B_ = self.fake_B_buffer.push_and_pop(fake_B)
+                loss_fake_B = self.criterion_GAN(
+                    self.D_B(fake_B_.detach()), fake)
+                # Total loss
+                loss_D_B = (loss_real_B + loss_fake_B) / 2
 
-            # loss_D = (loss_D_A + loss_D_B) / 2
-            loss_D = (loss_D_B) / 2
+                loss_D = (loss_D_A + loss_D_B) / 2
 
-            tqdm_dict = {'loss_D': loss_D}
+                tqdm_dict = {'loss_D': loss_D}
 
-            output = OrderedDict({
-                'loss': loss_D,
-                'progress_bar': tqdm_dict,
-                'log': tqdm_dict
-            })
-            return output
+                output = OrderedDict({
+                    'loss': loss_D,
+                    'progress_bar': tqdm_dict,
+                    'log': tqdm_dict
+                })
+                return output
 
     def configure_optimizers(self):
         lr = self.lr
@@ -214,7 +220,22 @@ class CycleGanModel(LightningModule):
             self.D_A.parameters(), lr=lr, betas=(b1, b2))
         optimizer_D_B = torch.optim.Adam(
             self.D_B.parameters(), lr=lr, betas=(b1, b2))
-        return [optimizer_G, optimizer_D_A, optimizer_D_B], []
+
+        # Learning rate update schedulers
+        lr_scheduler_G = torch.optim.lr_scheduler.LambdaLR(
+            optimizer_G, lr_lambda=LambdaLR(
+                self.n_epochs, self.epoch, self.decay_epoch).step
+        )
+        lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(
+            optimizer_D_A, lr_lambda=LambdaLR(
+                self.n_epochs, self.epoch, self.decay_epoch).step
+        )
+        lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(
+            optimizer_D_B, lr_lambda=LambdaLR(
+                self.n_epochs, self.epoch, self.decay_epoch).step
+        )
+
+        return [optimizer_G, optimizer_D_A, optimizer_D_B], [lr_scheduler_G, lr_scheduler_D_A, lr_scheduler_D_B]
 
     def train_dataloader(self):
         # Training data loader
