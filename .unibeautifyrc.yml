@@ -1,0 +1,12 @@
+---
+JavaScript: # Enable language
+  beautifiers: ["Black"]
+  indent_style: "space"
+  indent_size: 2
+CSS:
+  beautifiers: ["Black"]
+  indent_char: "space"
+  indent_size: 2
+Python:
+  beautifiers: ["Black"]
+  wrap_line_length: 180
