@@ -24,7 +24,7 @@ from models.cyclegan.datasets import ImageDataset
 
 cuda = True if torch.cuda.is_available() else False
 # Tensor type
-Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+Tensor = torch.cuda.HalfTensor if cuda else torch.FloatTensor
 
 
 class CycleGanModel(LightningModule):
@@ -33,7 +33,7 @@ class CycleGanModel(LightningModule):
                  lr: float = 0.0002,
                  b1: float = 0.5,
                  b2: float = 0.999,
-                 batch_size: int = 4,
+                 batch_size: int = 2,
                  img_height: int = 128,
                  img_width: int = 128,
                  channels: int = 3,
@@ -222,20 +222,20 @@ class CycleGanModel(LightningModule):
             self.D_B.parameters(), lr=lr, betas=(b1, b2))
 
         # Learning rate update schedulers
-        lr_scheduler_G = torch.optim.lr_scheduler.LambdaLR(
-            optimizer_G, lr_lambda=LambdaLR(
-                self.n_epochs, self.epoch, self.decay_epoch).step
-        )
-        lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(
-            optimizer_D_A, lr_lambda=LambdaLR(
-                self.n_epochs, self.epoch, self.decay_epoch).step
-        )
-        lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(
-            optimizer_D_B, lr_lambda=LambdaLR(
-                self.n_epochs, self.epoch, self.decay_epoch).step
-        )
+        #lr_scheduler_G = torch.optim.lr_scheduler.LambdaLR(
+        #    optimizer_G, lr_lambda=LambdaLR(
+        #        self.n_epochs, self.epoch, self.decay_epoch).step
+        #)
+        #lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(
+        #    optimizer_D_A, lr_lambda=LambdaLR(
+        #        self.n_epochs, self.epoch, self.decay_epoch).step
+        #)
+        #lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(
+        #    optimizer_D_B, lr_lambda=LambdaLR(
+        #        self.n_epochs, self.epoch, self.decay_epoch).step
+        #)
 
-        return [optimizer_G, optimizer_D_A, optimizer_D_B], [lr_scheduler_G, lr_scheduler_D_A, lr_scheduler_D_B]
+        return [optimizer_G, optimizer_D_A, optimizer_D_B], []
 
     def train_dataloader(self):
         # Training data loader

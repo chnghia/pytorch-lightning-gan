@@ -12,7 +12,7 @@ def main(img_height: int = 256,
          n_cpu: int = 4) -> None:
 
     model = CycleGanModel()
-    trainer = Trainer(gpus=[0])
+    trainer = Trainer(gpus=[0], precision=16)
     trainer.fit(model)
 
 
