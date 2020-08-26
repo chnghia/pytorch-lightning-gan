@@ -18,23 +18,26 @@ from models.pix2pix.models import GeneratorUNet, Discriminator
 from PIL import Image
 from models.pix2pix.datasets import ImageDataset
 
-cuda = True if torch.cuda.is_available() else False
+# cuda = True if torch.cuda.is_available() else False
 # Tensor type
-Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+# Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 
 class Pix2PixModel(LightningModule):
-    def __init__(self,
-                 latent_dim: int = 100,
-                 lr: float = 0.0002,
-                 b1: float = 0.5,
-                 b2: float = 0.999,
-                 batch_size: int = 1,
-                 img_height: int = 256,
-                 img_width: int = 256,
-                 lambda_pixel: int = 100,
-                 n_cpu: int = 4,
-                 dataset_name="mini_pix2pix", ** kwargs):
+    def __init__(
+        self,
+        latent_dim: int = 100,
+        lr: float = 0.0002,
+        b1: float = 0.5,
+        b2: float = 0.999,
+        batch_size: int = 1,
+        img_height: int = 256,
+        img_width: int = 256,
+        lambda_pixel: int = 100,
+        n_cpu: int = 4,
+        dataset_name="mini_pix2pix",
+        **kwargs
+    ):
         """Initialize the pix2pix class.
 
         Parameters:
@@ -69,45 +72,51 @@ class Pix2PixModel(LightningModule):
     def adversarial_loss(self, y_hat, y):
         raise NotImplementedError
 
+    def set_input(self, input):
+        self.real_A = input["A"]
+        self.real_B = input["B"]
+        self.image_paths = input["A_paths"]
+
+    def update_loss_D(self):
+        raise NotImplementedError
+
+    def update_load_G(self):
+        raise NotImplementedError
+
     def training_step(self, batch, batch_idx, optimizer_idx):
+        self.set_input(batch)
         # imgs, _ = batch
 
         # Model inputs
-        real_A = Variable(batch["B"].type(Tensor))
-        real_B = Variable(batch["A"].type(Tensor))
+        # real_A = Variable(batch["B"].type(Tensor))
+        # real_B = Variable(batch["A"].type(Tensor))
 
         # Adversarial ground truths
-        valid = Variable(
-            Tensor(np.ones((real_A.size(0), *self.patch))), requires_grad=False)
-        fake = Variable(
-            Tensor(np.zeros((real_A.size(0), *self.patch))), requires_grad=False)
+        # valid = Variable(Tensor(np.ones((real_A.size(0), *self.patch))), requires_grad=False)
+        # fake = Variable(Tensor(np.zeros((real_A.size(0), *self.patch))), requires_grad=False)
 
         # generate images
-        fake_B = self.generator(real_A)
+        self.fake_B = self.forward(self.real_A)
 
         # train generator
         if optimizer_idx == 0:
             # log sampled images
-            img_sample = torch.cat((real_A.data, fake_B.data, real_B.data), -2)
+            img_sample = torch.cat((self.real_A, self.fake_B, self.real_B), -2)
             grid = torchvision.utils.make_grid(img_sample)
-            self.logger.experiment.add_image('generated_images', grid, 0)
+            self.logger.experiment.add_image("generated_images", grid, 0)
 
             # GAN loss
             # fake_B = self.generator(real_A)
-            pred_fake = self.discriminator(fake_B, real_A)
+            pred_fake = self.discriminator(self.fake_B, self.real_A)
             loss_GAN = self.criterion_GAN(pred_fake, valid)
             # Pixel-wise loss
             loss_pixel = self.criterion_pixelwise(fake_B, real_B)
 
             # Total loss
             g_loss = loss_GAN + self.lambda_pixel * loss_pixel
-            tqdm_dict = {'g_loss': g_loss}
+            tqdm_dict = {"g_loss": g_loss}
 
-            output = OrderedDict({
-                'loss': g_loss,
-                'progress_bar': tqdm_dict,
-                'log': tqdm_dict
-            })
+            output = OrderedDict({"loss": g_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
             return output
 
         # train discriminator
@@ -116,21 +125,17 @@ class Pix2PixModel(LightningModule):
             # self.optimizer_D.zero_grad()
 
             # Real loss
-            pred_real = self.discriminator(real_B, real_A)
+            pred_real = self.discriminator(self.real_B, self.real_A)
             loss_real = self.criterion_GAN(pred_real, valid)
 
             # Fake loss
-            pred_fake = self.discriminator(fake_B.detach(), real_A)
+            pred_fake = self.discriminator(self.fake_B.detach(), self.real_A)
             loss_fake = self.criterion_GAN(pred_fake, fake)
 
             # Total loss
             d_loss = 0.5 * (loss_real + loss_fake)
-            tqdm_dict = {'d_loss': d_loss}
-            output = OrderedDict({
-                'loss': d_loss,
-                'progress_bar': tqdm_dict,
-                'log': tqdm_dict
-            })
+            tqdm_dict = {"d_loss": d_loss}
+            output = OrderedDict({"loss": d_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
             return output
 
     def configure_optimizers(self):
@@ -139,45 +144,29 @@ class Pix2PixModel(LightningModule):
         b2 = self.b2
 
         # Optimizers
-        opt_g = torch.optim.Adam(
-            self.generator.parameters(), lr=lr, betas=(b1, b2))
-        opt_d = torch.optim.Adam(
-            self.discriminator.parameters(), lr=lr, betas=(b1, b2))
+        opt_g = torch.optim.Adam(self.generator.parameters(), lr=lr, betas=(b1, b2))
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
         return [opt_g, opt_d], []
 
     def train_dataloader(self):
         # Configure dataloaders
         transforms_ = [
-            transforms.Resize(
-                (self.img_height, self.img_width), Image.BICUBIC),
+            transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
 
-        dataloader = DataLoader(
-            ImageDataset("./data/%s" %
-                         self.dataset_name, transforms_=transforms_),
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.n_cpu,
-        )
+        dataloader = DataLoader(ImageDataset("./data/%s" % self.dataset_name, transforms_=transforms_), batch_size=self.batch_size, shuffle=True, num_workers=self.n_cpu,)
         return dataloader
 
     def val_dataloader(self):
         transforms_ = [
-            transforms.Resize(
-                (self.img_height, self.img_width), Image.BICUBIC),
+            transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
 
-        val_dataloader = DataLoader(
-            ImageDataset("./data/%s" % self.dataset_name,
-                         transforms_=transforms_, mode="val"),
-            batch_size=10,
-            shuffle=True,
-            num_workers=1,
-        )
+        val_dataloader = DataLoader(ImageDataset("./data/%s" % self.dataset_name, transforms_=transforms_, mode="val"), batch_size=10, shuffle=True, num_workers=1,)
         return val_dataloader
 
     def on_epoch_end(self):
