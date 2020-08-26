@@ -76,13 +76,13 @@ class Pix2PixModel(LightningModule):
         raise NotImplementedError
 
     def set_input(self, input):
-        # self.real_A = input["A"]
-        # self.real_B = input["B"]
+        self.real_A = input["A"]
+        self.real_B = input["B"]
         # self.image_paths = input["A_paths"]
 
         # Model inputs
-        self.real_A = Variable(input["B"].type(Tensor))
-        self.real_B = Variable(input["A"].type(Tensor))
+#         self.real_A = Variable(input["B"].type(Tensor))
+#         self.real_B = Variable(input["A"].type(Tensor))
 
         # Adversarial ground truths
         self.valid = Variable(Tensor(np.ones((self.real_A.size(0), *self.patch))), requires_grad=False)
@@ -97,6 +97,7 @@ class Pix2PixModel(LightningModule):
     def training_step(self, batch, batch_idx, optimizer_idx):
         # Model inputs
         self.set_input(batch)
+        print(self.real_A.shape)
 
         # generate images
         self.fake_B = self.forward(self.real_A)
