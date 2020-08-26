@@ -19,6 +19,8 @@ from models.pix2pix.models import GeneratorUNet, Discriminator
 from PIL import Image
 from models.pix2pix.datasets import ImageDataset
 
+import albumentations as A
+
 cuda = True if torch.cuda.is_available() else False
 # Tensor type
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
@@ -93,16 +95,8 @@ class Pix2PixModel(LightningModule):
         raise NotImplementedError
 
     def training_step(self, batch, batch_idx, optimizer_idx):
-        self.set_input(batch)
-        # imgs, _ = batch
-
         # Model inputs
-        # real_A = Variable(batch["B"].type(Tensor))
-        # real_B = Variable(batch["A"].type(Tensor))
-
-        # Adversarial ground truths
-        # valid = Variable(Tensor(np.ones((real_A.size(0), *self.patch))), requires_grad=False)
-        # fake = Variable(Tensor(np.zeros((real_A.size(0), *self.patch))), requires_grad=False)
+        self.set_input(batch)
 
         # generate images
         self.fake_B = self.forward(self.real_A)
@@ -165,20 +159,70 @@ class Pix2PixModel(LightningModule):
 
     def train_dataloader(self):
         # Configure dataloaders
+#         transforms_ = [
+#             transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
+#             transforms.ToTensor(),
+#             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+#         ]
         transforms_ = [
-            transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            A.RandomResizedCrop(
+                self.img_height,
+                self.img_width,
+            ),
+            A.Rotate(13),
+            A.HorizontalFlip(),
+            A.RandomBrightnessContrast(),
+            A.HueSaturationValue(),
+            A.RGBShift(),
+            A.RandomGamma(),
+            # A.CLAHE(),
+#             MyCoarseDropout(
+#                 min_holes=1,
+#                 max_holes=8,
+#                 max_height=32,
+#                 max_width=32,
+#             ),
+            # A.Resize(img_size, img_size, interpolation=cv2.INTER_CUBIC),
+#             A.Normalize(
+#                 mean=[0.485, 0.456, 0.406],
+#                 std=[0.229, 0.224, 0.225],
+#             ),
+            # ToTensorV2(),
         ]
 
         dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=transforms_), batch_size=self.batch_size, shuffle=True, num_workers=self.n_cpu,)
         return dataloader
 
     def val_dataloader(self):
+#         transforms_ = [
+#             transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
+#             transforms.ToTensor(),
+#             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+#         ]
         transforms_ = [
-            transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            A.RandomResizedCrop(
+                self.img_height,
+                self.img_width,
+            ),
+            A.Rotate(13),
+            A.HorizontalFlip(),
+            A.RandomBrightnessContrast(),
+            A.HueSaturationValue(),
+            A.RGBShift(),
+            A.RandomGamma(),
+            # A.CLAHE(),
+#             MyCoarseDropout(
+#                 min_holes=1,
+#                 max_holes=8,
+#                 max_height=32,
+#                 max_width=32,
+#             ),
+            # A.Resize(img_size, img_size, interpolation=cv2.INTER_CUBIC),
+#             A.Normalize(
+#                 mean=[0.485, 0.456, 0.406],
+#                 std=[0.229, 0.224, 0.225],
+#             ),
+            # ToTensorV2(),
         ]
 
         val_dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=transforms_, mode="val"), batch_size=10, shuffle=True, num_workers=1,)
