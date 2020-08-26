@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
+from torch.optim import lr_scheduler
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
@@ -156,13 +157,11 @@ class Pix2PixModel(LightningModule):
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
 
         # Schedulers
-        # def lambda_rule(epoch):
-        #     lr_l = 1.0 - max(0, epoch + opt.epoch_count - opt.n_epochs) / float(opt.n_epochs_decay + 1)
-        #     return lr_l
-        scheduler_g = torch.optim.lr_scheduler.CosineAnnealingLR(torch.optim.Adam, T_max=100, eta_min=0)
-        scheduler_d = torch.optim.lr_scheduler.CosineAnnealingLR(torch.optim.Adam, T_max=100, eta_min=0)
+        gen_sched = {'scheduler': lr_scheduler.ExponentialLR(opt_g, 0.99),
+                 'interval': 'step'}  # called after each training step
+        dis_sched = lr_scheduler.CosineAnnealingLR(opt_d, T_max=10) # called every epoch
 
-        return [opt_g, opt_d], [scheduler_g, scheduler_d]
+        return [opt_g, opt_d], [gen_sched, dis_sched]
 
     def train_dataloader(self):
         # Configure dataloaders
@@ -172,7 +171,7 @@ class Pix2PixModel(LightningModule):
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
 
-        dataloader = DataLoader(ImageDataset("./data/%s" % self.dataset_name, transforms_=transforms_), batch_size=self.batch_size, shuffle=True, num_workers=self.n_cpu,)
+        dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=transforms_), batch_size=self.batch_size, shuffle=True, num_workers=self.n_cpu,)
         return dataloader
 
     def val_dataloader(self):
@@ -182,7 +181,7 @@ class Pix2PixModel(LightningModule):
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
 
-        val_dataloader = DataLoader(ImageDataset("./data/%s" % self.dataset_name, transforms_=transforms_, mode="val"), batch_size=10, shuffle=True, num_workers=1,)
+        val_dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=transforms_, mode="val"), batch_size=10, shuffle=True, num_workers=1,)
         return val_dataloader
 
     def on_epoch_end(self):
