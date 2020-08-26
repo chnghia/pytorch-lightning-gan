@@ -18,9 +18,9 @@ from models.pix2pix.models import GeneratorUNet, Discriminator
 from PIL import Image
 from models.pix2pix.datasets import ImageDataset
 
-# cuda = True if torch.cuda.is_available() else False
+cuda = True if torch.cuda.is_available() else False
 # Tensor type
-# Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 
 class Pix2PixModel(LightningModule):
@@ -73,9 +73,17 @@ class Pix2PixModel(LightningModule):
         raise NotImplementedError
 
     def set_input(self, input):
-        self.real_A = input["A"]
-        self.real_B = input["B"]
-        self.image_paths = input["A_paths"]
+        # self.real_A = input["A"]
+        # self.real_B = input["B"]
+        # self.image_paths = input["A_paths"]
+
+        # Model inputs
+        self.real_A = Variable(input["B"].type(Tensor))
+        self.real_B = Variable(input["A"].type(Tensor))
+
+        # Adversarial ground truths
+        self.valid = Variable(Tensor(np.ones((self.real_A.size(0), *self.patch))), requires_grad=False)
+        self.fake = Variable(Tensor(np.zeros((self.real_A.size(0), *self.patch))), requires_grad=False)
 
     def update_loss_D(self):
         raise NotImplementedError
@@ -108,9 +116,9 @@ class Pix2PixModel(LightningModule):
             # GAN loss
             # fake_B = self.generator(real_A)
             pred_fake = self.discriminator(self.fake_B, self.real_A)
-            loss_GAN = self.criterion_GAN(pred_fake, valid)
+            loss_GAN = self.criterion_GAN(pred_fake, self.valid)
             # Pixel-wise loss
-            loss_pixel = self.criterion_pixelwise(fake_B, real_B)
+            loss_pixel = self.criterion_pixelwise(self.fake_B, self.real_B)
 
             # Total loss
             g_loss = loss_GAN + self.lambda_pixel * loss_pixel
@@ -126,11 +134,11 @@ class Pix2PixModel(LightningModule):
 
             # Real loss
             pred_real = self.discriminator(self.real_B, self.real_A)
-            loss_real = self.criterion_GAN(pred_real, valid)
+            loss_real = self.criterion_GAN(pred_real, self.valid)
 
             # Fake loss
             pred_fake = self.discriminator(self.fake_B.detach(), self.real_A)
-            loss_fake = self.criterion_GAN(pred_fake, fake)
+            loss_fake = self.criterion_GAN(pred_fake, self.fake)
 
             # Total loss
             d_loss = 0.5 * (loss_real + loss_fake)
@@ -146,7 +154,15 @@ class Pix2PixModel(LightningModule):
         # Optimizers
         opt_g = torch.optim.Adam(self.generator.parameters(), lr=lr, betas=(b1, b2))
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
-        return [opt_g, opt_d], []
+
+        # Schedulers
+        # def lambda_rule(epoch):
+        #     lr_l = 1.0 - max(0, epoch + opt.epoch_count - opt.n_epochs) / float(opt.n_epochs_decay + 1)
+        #     return lr_l
+        scheduler_g = torch.optim.lr_scheduler.CosineAnnealingLR(torch.optim.Adam, T_max=100, eta_min=0)
+        scheduler_d = torch.optim.lr_scheduler.CosineAnnealingLR(torch.optim.Adam, T_max=100, eta_min=0)
+
+        return [opt_g, opt_d], [scheduler_g, scheduler_d]
 
     def train_dataloader(self):
         # Configure dataloaders
