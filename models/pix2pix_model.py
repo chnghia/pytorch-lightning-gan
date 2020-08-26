@@ -68,6 +68,37 @@ class Pix2PixModel(LightningModule):
         self.patch = (1, img_height // 2 ** 4, img_width // 2 ** 4)
         self.criterion_GAN = torch.nn.MSELoss()
         self.criterion_pixelwise = torch.nn.L1Loss()
+        # Configure dataloaders
+#         transforms_ = [
+#             transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
+#             transforms.ToTensor(),
+#             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+#         ]
+        self.transforms_ = [
+            A.RandomResizedCrop(
+                self.img_height,
+                self.img_width,
+            ),
+            A.Rotate(13),
+            A.HorizontalFlip(),
+            A.RandomBrightnessContrast(),
+            A.HueSaturationValue(),
+            A.RGBShift(),
+            A.RandomGamma(),
+            # A.CLAHE(),
+#             MyCoarseDropout(
+#                 min_holes=1,
+#                 max_holes=8,
+#                 max_height=32,
+#                 max_width=32,
+#             ),
+            # A.Resize(img_size, img_size, interpolation=cv2.INTER_CUBIC),
+#             A.Normalize(
+#                 mean=[0.485, 0.456, 0.406],
+#                 std=[0.229, 0.224, 0.225],
+#             ),
+            # ToTensorV2(),
+        ]
 
     def forward(self, z):
         return self.generator(z)
@@ -159,74 +190,13 @@ class Pix2PixModel(LightningModule):
         return [opt_g, opt_d], [gen_sched, dis_sched]
 
     def train_dataloader(self):
-        # Configure dataloaders
-#         transforms_ = [
-#             transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
-#             transforms.ToTensor(),
-#             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-#         ]
-        transforms_ = [
-            A.RandomResizedCrop(
-                self.img_height,
-                self.img_width,
-            ),
-            A.Rotate(13),
-            A.HorizontalFlip(),
-            A.RandomBrightnessContrast(),
-            A.HueSaturationValue(),
-            A.RGBShift(),
-            A.RandomGamma(),
-            # A.CLAHE(),
-#             MyCoarseDropout(
-#                 min_holes=1,
-#                 max_holes=8,
-#                 max_height=32,
-#                 max_width=32,
-#             ),
-            # A.Resize(img_size, img_size, interpolation=cv2.INTER_CUBIC),
-#             A.Normalize(
-#                 mean=[0.485, 0.456, 0.406],
-#                 std=[0.229, 0.224, 0.225],
-#             ),
-            # ToTensorV2(),
-        ]
-
-        dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=transforms_), batch_size=self.batch_size, shuffle=True, num_workers=self.n_cpu,)
+        dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=self.transforms_), 
+                                batch_size=self.batch_size, shuffle=True, num_workers=self.n_cpu,)
         return dataloader
 
     def val_dataloader(self):
-#         transforms_ = [
-#             transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
-#             transforms.ToTensor(),
-#             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-#         ]
-        transforms_ = [
-            A.RandomResizedCrop(
-                self.img_height,
-                self.img_width,
-            ),
-            A.Rotate(13),
-            A.HorizontalFlip(),
-            A.RandomBrightnessContrast(),
-            A.HueSaturationValue(),
-            A.RGBShift(),
-            A.RandomGamma(),
-            # A.CLAHE(),
-#             MyCoarseDropout(
-#                 min_holes=1,
-#                 max_holes=8,
-#                 max_height=32,
-#                 max_width=32,
-#             ),
-            # A.Resize(img_size, img_size, interpolation=cv2.INTER_CUBIC),
-#             A.Normalize(
-#                 mean=[0.485, 0.456, 0.406],
-#                 std=[0.229, 0.224, 0.225],
-#             ),
-            # ToTensorV2(),
-        ]
-
-        val_dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=transforms_, mode="val"), batch_size=10, shuffle=True, num_workers=1,)
+        val_dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=self.transforms_, mode="val"), 
+                                    batch_size=10, shuffle=True, num_workers=1,)
         return val_dataloader
 
     def on_epoch_end(self):

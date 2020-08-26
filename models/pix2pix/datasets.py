@@ -27,14 +27,15 @@ class ImageDataset(Dataset):
 #         if np.random.random() < 0.5:
 #             img_A = Image.fromarray(np.array(img_A)[:, ::-1, :], "RGB")
 #             img_B = Image.fromarray(np.array(img_B)[:, ::-1, :], "RGB")
-            
+
+#         img_A = self.transform(img_A)
+#         img_B = self.transform(img_B)
+
         img_A = np.array(img_A)
         img_B = np.array(img_B)
 
         augmented = self.transform(image=img_A, mask=img_B)
 #         print(augmented)
-#         img_A = self.transform(img_A)
-#         img_B = self.transform(img_B)
         img = np.array(augmented['image']).astype(np.float32) #.transpose((2, 0, 1))
         mask = np.array(augmented['mask']).astype(np.float32)
 
