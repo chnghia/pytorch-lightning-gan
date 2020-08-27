@@ -17,7 +17,7 @@ from pytorch_lightning.core import LightningModule
 from pytorch_lightning.trainer import Trainer
 from models.pix2pix.models import GeneratorUNet, Discriminator
 from PIL import Image
-from models.pix2pix.datasets import ImageDataset
+from models.pix2pix.datasets import ImageDataset, FloorplanDataset
 
 import albumentations as A
 
@@ -190,14 +190,15 @@ class Pix2PixModel(LightningModule):
         return [opt_g, opt_d], [gen_sched, dis_sched]
 
     def train_dataloader(self):
-        dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=self.transforms_), 
+        dataloader = DataLoader(FloorplanDataset("./datasets/%s" % self.dataset_name, transforms_=self.transforms_), 
                                 batch_size=self.batch_size, shuffle=True, num_workers=self.n_cpu,)
         return dataloader
 
     def val_dataloader(self):
-        val_dataloader = DataLoader(ImageDataset("./datasets/%s" % self.dataset_name, transforms_=self.transforms_, mode="val"), 
-                                    batch_size=10, shuffle=True, num_workers=1,)
+        val_dataloader = DataLoader(FloorplanDataset("./datasets/%s" % self.dataset_name, transforms_=self.transforms_, mode="test"), 
+                                    batch_size=1, shuffle=True, num_workers=1,)
         return val_dataloader
+        pass
 
     def on_epoch_end(self):
         pass
