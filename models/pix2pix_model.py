@@ -183,8 +183,12 @@ class Pix2PixModel(LightningModule):
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
 
         # Schedulers
-        gen_sched = {'scheduler': lr_scheduler.ExponentialLR(opt_g, 0.99),
-                     'interval': 'step'}  # called after each training step
+        def lambda_rule(epoch):
+            lr_l = 1.0 - max(0, epoch + 1 - 100) / float(100 + 1)
+            return lr_l
+#         gen_sched = {'scheduler': lr_scheduler.ExponentialLR(opt_g, 0.99),
+#                      'interval': 'step'}  # called after each training step
+        gen_sched = lr_scheduler.LambdaLR(opt_g, lr_lambda=lambda_rule)
         dis_sched = lr_scheduler.CosineAnnealingLR(opt_d, T_max=10) # called every epoch
 
         return [opt_g, opt_d], [gen_sched, dis_sched]
