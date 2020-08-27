@@ -30,14 +30,15 @@ class ImageDataset(Dataset):
 
 #         img_A = self.transform(img_A)
 #         img_B = self.transform(img_B)
+#         return {"A": img_A, "B": img_B}
 
         img_A = np.array(img_A)
         img_B = np.array(img_B)
 
         augmented = self.transform(image=img_A, mask=img_B)
 #         print(augmented)
-        img = np.array(augmented['image']).astype(np.float32) #.transpose((2, 0, 1))
-        mask = np.array(augmented['mask']).astype(np.float32)
+        img = np.array(augmented['image']).astype(np.float32).transpose((2, 0, 1))
+        mask = np.array(augmented['mask']).astype(np.float32).transpose((2, 0, 1))
 
         return {"A": img / 255., "B": mask / 255.}
 

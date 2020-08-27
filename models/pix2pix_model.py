@@ -69,10 +69,10 @@ class Pix2PixModel(LightningModule):
         self.criterion_GAN = torch.nn.MSELoss()
         self.criterion_pixelwise = torch.nn.L1Loss()
         # Configure dataloaders
-#         transforms_ = [
+#         self.transforms_ = [
 #             transforms.Resize((self.img_height, self.img_width), Image.BICUBIC),
 #             transforms.ToTensor(),
-#             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+# #             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
 #         ]
         self.transforms_ = [
             A.RandomResizedCrop(
@@ -107,13 +107,13 @@ class Pix2PixModel(LightningModule):
         raise NotImplementedError
 
     def set_input(self, input):
-        self.real_A = input["A"]
-        self.real_B = input["B"]
+#         self.real_A = input["A"]
+#         self.real_B = input["B"]
         # self.image_paths = input["A_paths"]
 
         # Model inputs
-#         self.real_A = Variable(input["B"].type(Tensor))
-#         self.real_B = Variable(input["A"].type(Tensor))
+        self.real_A = Variable(input["B"].type(Tensor))
+        self.real_B = Variable(input["A"].type(Tensor))
 
         # Adversarial ground truths
         self.valid = Variable(Tensor(np.ones((self.real_A.size(0), *self.patch))), requires_grad=False)
@@ -128,7 +128,7 @@ class Pix2PixModel(LightningModule):
     def training_step(self, batch, batch_idx, optimizer_idx):
         # Model inputs
         self.set_input(batch)
-        print(self.real_A.shape)
+#         print(self.real_A.shape)
 
         # generate images
         self.fake_B = self.forward(self.real_A)
@@ -184,7 +184,7 @@ class Pix2PixModel(LightningModule):
 
         # Schedulers
         gen_sched = {'scheduler': lr_scheduler.ExponentialLR(opt_g, 0.99),
-                 'interval': 'step'}  # called after each training step
+                     'interval': 'step'}  # called after each training step
         dis_sched = lr_scheduler.CosineAnnealingLR(opt_d, T_max=10) # called every epoch
 
         return [opt_g, opt_d], [gen_sched, dis_sched]
