@@ -31,6 +31,7 @@ share/python-wheels/
 MANIFEST
 lightning_logs/
 logs/
+experiments/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

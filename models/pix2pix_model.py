@@ -149,7 +149,7 @@ class Pix2PixModel(LightningModule):
 
             # Total loss
             g_loss = loss_GAN + self.lambda_pixel * loss_pixel
-            tqdm_dict = {"g_loss": g_loss}
+            tqdm_dict = {"loss_g": g_loss}
 
             output = OrderedDict({"loss": g_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
             return output
@@ -169,7 +169,7 @@ class Pix2PixModel(LightningModule):
 
             # Total loss
             d_loss = 0.5 * (loss_real + loss_fake)
-            tqdm_dict = {"d_loss": d_loss}
+            tqdm_dict = {"loss_d": d_loss}
             output = OrderedDict({"loss": d_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
             return output
 
