@@ -128,18 +128,17 @@ class Pix2PixModel(LightningModule):
     def training_step(self, batch, batch_idx, optimizer_idx):
         # Model inputs
         self.set_input(batch)
-#         print(self.real_A.shape)
+#         print("real_A shape: ", self.real_A.shape)
+#         print("real_B shape: ", self.real_B.shape)
 
         # generate images
         self.fake_B = self.forward(self.real_A)
+#         print("fake_B shape: ", self.fake_B.shape)
 
         # train generator
         if optimizer_idx == 0:
             # log sampled images
-            img_sample = torch.cat((self.real_A, self.fake_B, self.real_B), -2)
-            grid = torchvision.utils.make_grid(img_sample)
-            self.logger.experiment.add_image("generated_images", grid, 0)
-
+            
             # GAN loss
             # fake_B = self.generator(real_A)
             pred_fake = self.discriminator(self.fake_B, self.real_A)
@@ -205,7 +204,9 @@ class Pix2PixModel(LightningModule):
         pass
 
     def on_epoch_end(self):
-        pass
+        img_sample = torch.cat((self.real_A, self.fake_B, self.real_B), -2)
+        grid = torchvision.utils.make_grid(img_sample)
+        self.logger.experiment.add_image("generated_images", grid, 0)
 
     def validation_step(self, batch, batch_idx):
         pass
