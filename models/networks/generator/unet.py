@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+import functools
 
 class UnetGenerator(nn.Module):
     """Create a Unet-based generator"""

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+import functools
 
 class ResnetGenerator(nn.Module):
     """Resnet-based generator that consists of Resnet blocks between a few downsampling/upsampling operations.
