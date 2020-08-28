@@ -16,6 +16,8 @@ from torchvision.datasets import MNIST
 from pytorch_lightning.core import LightningModule
 from pytorch_lightning.trainer import Trainer
 from models.pix2pix.models import GeneratorUNet, Discriminator
+from models.networks.generator.resnet import ResnetGenerator
+from models.networks.discriminator.nlayer_discriminator import NLayerDiscriminator
 from PIL import Image
 from models.pix2pix.datasets import ImageDataset, FloorplanDataset
 
@@ -39,6 +41,12 @@ class Pix2PixModel(LightningModule):
         lambda_pixel: int = 100,
         n_cpu: int = 4,
         dataset_name="mini_pix2pix",
+        input_nc: int = 3,
+        output_nc: int = 3,
+        ngf: int = 64,
+        norm_layer = nn.BatchNorm2d,
+        use_dropout = False,
+        ndf: int = 64,
         **kwargs
     ):
         """Initialize the pix2pix class.
@@ -56,8 +64,17 @@ class Pix2PixModel(LightningModule):
         self.dataset_name = dataset_name
         self.n_cpu = n_cpu
 
-        self.generator = GeneratorUNet()
+#         self.generator = GeneratorUNet()
         self.discriminator = Discriminator()
+        self.input_nc = input_nc
+        self.output_nc = output_nc
+        self.ngf = ngf
+        self.norm_layer = norm_layer
+        self.use_dropout = use_dropout
+        self.generator = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9)
+        
+        self.ndf = ndf
+#         self.discriminator = NLayerDiscriminator(input_nc, ndf, n_layers=3, norm_layer=norm_layer)
 
         # Loss weight of L1 pixel-wise loss between translated image and real image
         self.lambda_pixel = lambda_pixel
