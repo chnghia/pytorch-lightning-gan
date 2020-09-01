@@ -92,7 +92,7 @@ class Pix2PixModel(LightningModule):
 # #             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
 #         ]
         self.transforms_ = [
-            A.RandomResizedCrop(
+            A.Resize(
                 self.img_height,
                 self.img_width,
             ),
