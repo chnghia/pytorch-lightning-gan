@@ -6,26 +6,26 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
-from models.networks.base_network import BaseNetwork
-from models.networks.normalization import get_nonspade_norm_layer
-import util.util as util
+from models.networks.spade.base_network import BaseNetwork
+from models.networks.spade.normalization import get_nonspade_norm_layer
+# import util.util as util
 
 
 class MultiscaleDiscriminator(BaseNetwork):
-    @staticmethod
-    def modify_commandline_options(parser, is_train):
-        parser.add_argument('--netD_subarch', type=str, default='n_layer',
-                            help='architecture of each discriminator')
-        parser.add_argument('--num_D', type=int, default=2,
-                            help='number of discriminators to be used in multiscale')
-        opt, _ = parser.parse_known_args()
+#     @staticmethod
+#     def modify_commandline_options(parser, is_train):
+#         parser.add_argument('--netD_subarch', type=str, default='n_layer',
+#                             help='architecture of each discriminator')
+#         parser.add_argument('--num_D', type=int, default=2,
+#                             help='number of discriminators to be used in multiscale')
+#         opt, _ = parser.parse_known_args()
 
-        # define properties of each discriminator of the multiscale discriminator
-        subnetD = util.find_class_in_module(opt.netD_subarch + 'discriminator',
-                                            'models.networks.discriminator')
-        subnetD.modify_commandline_options(parser, is_train)
+#         # define properties of each discriminator of the multiscale discriminator
+#         subnetD = util.find_class_in_module(opt.netD_subarch + 'discriminator',
+#                                             'models.networks.discriminator')
+#         subnetD.modify_commandline_options(parser, is_train)
 
-        return parser
+#         return parser
 
     def __init__(self, opt):
         super().__init__()

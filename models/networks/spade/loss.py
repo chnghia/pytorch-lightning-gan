@@ -6,7 +6,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.networks.architecture import VGG19
+from models.networks.spade.architecture import VGG19
 
 
 # Defines the GAN loss which uses either LSGAN or the regular GAN.
